@@ -9,7 +9,8 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     return (
         Background(
-        child: Editor(),
+          isMoving: true,
+        child: Editor(isTooling: true,),
       )
     );
   }

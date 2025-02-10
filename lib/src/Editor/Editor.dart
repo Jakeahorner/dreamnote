@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
 class Editor extends StatefulWidget {
-  const Editor({super.key});
+  final bool isTooling;
+  const Editor({super.key, required this.isTooling});
 
   @override
   State<Editor> createState() => _EditorState();
@@ -12,32 +13,40 @@ class Editor extends StatefulWidget {
 
 class _EditorState extends State<Editor> {
 
+
   Offset currentPointerPoint = Offset.zero;
   Path path = Path();
-  Offset editorSize = Offset(100, 200);
-  Offset movingEditorSize = Offset(100, 200);
   List<Path> pathStack = [];
-  double scale = 1;
   bool usingStylus = false;
   bool stylusHovering = false;
   bool stylusButtonDown = false;
   Offset stylusHoverLocation = Offset.zero;
+  List<int> pointers = [];
+  bool multitouched = false;
 
 
   void onPointerDown(PointerDownEvent event) {
     setState(() {
-      path.moveTo(event.localPosition.dx, event.localPosition.dy);
+      pointers.add(event.device);
+      multitouched = pointers.length > 1;
 
-      stylusHovering = false;
-      if(event.kind == PointerDeviceKind.stylus) {
-        usingStylus = true;
+      if(widget.isTooling && !multitouched) {
+        path.moveTo(event.localPosition.dx, event.localPosition.dy);
+
+        stylusHovering = false;
+        if (event.kind == PointerDeviceKind.stylus) {
+          usingStylus = true;
+        }
+      } else {
+        path = Path();
       }
     });
   }
   void onPointerMove(PointerMoveEvent event) {
     setState(() {
-      path.lineTo(event.localPosition.dx, event.localPosition.dy);
-
+      if(widget.isTooling && !multitouched) {
+        path.lineTo(event.localPosition.dx, event.localPosition.dy);
+      }
     });
 
   }
@@ -53,30 +62,13 @@ class _EditorState extends State<Editor> {
 
   void onPointerUp(PointerUpEvent event) {
     setState(() {
-      stylusHovering = false;
-    });
-  }
-
-  void onScaleStart(ScaleStartDetails event) {
-    setState(() {
-      path.moveTo(event.localFocalPoint.dx, event.localFocalPoint.dy);
-    });
-
-  }
-  void onScaleUpdate(ScaleUpdateDetails event) {
-    setState(() {
-      if(event.pointerCount == 1) {
-        path.lineTo(event.localFocalPoint.dx, event.localFocalPoint.dy);
-      } else if(event.pointerCount == 2) {
-        scale = event.scale;
+      if(!multitouched) {
+        pathStack.add(path);
       }
-    });
-  }
-
-  void onScaleEnd(ScaleEndDetails event) {
-    setState(() {
-      pathStack.add(path);
       path = Path();
+      pointers.remove(event.device);
+
+      stylusHovering = false;
     });
   }
 
