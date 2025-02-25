@@ -1,6 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
+
+import '../Utilities/PointerDetails.dart';
+import '../Utilities/Tool.dart';
 
 class Editor extends StatefulWidget {
   final bool isTooling;
@@ -13,30 +15,17 @@ class Editor extends StatefulWidget {
 
 class _EditorState extends State<Editor> {
 
-
-  Offset currentPointerPoint = Offset.zero;
   Path path = Path();
   List<Path> pathStack = [];
-  bool usingStylus = false;
-  bool stylusHovering = false;
-  bool stylusButtonDown = false;
-  Offset stylusHoverLocation = Offset.zero;
-  List<int> pointers = [];
-  bool multitouched = false;
+  PointerDetails pointerDetails = PointerDetails();
 
 
   void onPointerDown(PointerDownEvent event) {
     setState(() {
-      pointers.add(event.device);
-      multitouched = pointers.length > 1;
+      pointerDetails.addPointer(event);
 
-      if(widget.isTooling && !multitouched) {
-        path.moveTo(event.localPosition.dx, event.localPosition.dy);
-
-        stylusHovering = false;
-        if (event.kind == PointerDeviceKind.stylus) {
-          usingStylus = true;
-        }
+      if(widget.isTooling && !pointerDetails.isMuliTouched()) {
+        path.moveTo(pointerDetails.getPosition().dx, pointerDetails.getPosition().dy);
       } else {
         path = Path();
       }
@@ -44,7 +33,7 @@ class _EditorState extends State<Editor> {
   }
   void onPointerMove(PointerMoveEvent event) {
     setState(() {
-      if(widget.isTooling && !multitouched) {
+      if(widget.isTooling && !pointerDetails.isMuliTouched()) {
         path.lineTo(event.localPosition.dx, event.localPosition.dy);
       }
     });
@@ -52,23 +41,17 @@ class _EditorState extends State<Editor> {
   }
   void onPointerHover(PointerHoverEvent event) {
     setState(() {
-      if(event.kind == PointerDeviceKind.stylus) {
-        stylusHovering = true;
-        usingStylus = true;
-        stylusHoverLocation = event.localPosition;
-      }
+      pointerDetails.addHoveringPointer(event);
     });
   }
 
   void onPointerUp(PointerUpEvent event) {
     setState(() {
-      if(!multitouched) {
+      if(!pointerDetails.isMuliTouched() && pointerDetails.getTool() == Tool.pen) {
         pathStack.add(path);
       }
       path = Path();
-      pointers.remove(event.device);
-
-      stylusHovering = false;
+      pointerDetails.removePointer(event);
     });
   }
 
@@ -83,109 +66,75 @@ class _EditorState extends State<Editor> {
         onPointerUp: onPointerUp,
         onPointerMove: onPointerMove,
         child: CustomPaint(
-              foregroundPainter: StylusPaint(hoverLocation: stylusHoverLocation, shouldShowDot: stylusHovering),
-              child: CustomPaint(
-                foregroundPainter: LoadPaint(paths: pathStack),
-                child: CustomPaint(
-                  foregroundPainter: CurrentPaint(path: path),
-                  child: ColoredBox(color: Colors.white),
-                ),
-              ),
-            )
+          foregroundPainter: Painter(pointerDetails: pointerDetails, pathStack: pathStack, path: path),
+          child: ColoredBox(color: Colors.white)
+        )
       )
     );
   }
 }
 
-class LoadPaint extends CustomPainter {
 
-  final List<Path> paths;
+class Painter extends CustomPainter {
 
-  LoadPaint({
-    required this.paths,
+  final Path path;
+  List<Path> pathStack = [];
+  PointerDetails pointerDetails;
+
+
+
+  Painter({
+    required this.pointerDetails,
+    required this.path,
+    required this.pathStack,
   });
-
-  @override
 
 
   @override
   void paint(Canvas canvas, Size size) {
-    for(Path loadedpath in paths) {
+
+    //Load past paths
+    for(Path loadedPath in pathStack) {
       final Paint paint = Paint();
       paint.color = Colors.black;
       paint.style = PaintingStyle.stroke;
       paint.strokeCap = StrokeCap.round;
       paint.strokeWidth = 5;
 
-      canvas.drawPath(loadedpath, paint);
+      canvas.drawPath(loadedPath, paint);
     }
 
-  }
+    //Pen Paint
+    final Paint penPaint = Paint();
+    penPaint.color = Colors.black;
+    penPaint.style = PaintingStyle.stroke;
+    penPaint.strokeCap = StrokeCap.round;
+    penPaint.strokeWidth = 5;
 
-// Since this Sky painter has no fields, it always paints
-// the same thing and semantics information is the same.
-// Therefore we return false here. If we had fields (set
-// from the constructor) then we would return true if any
-// of them differed from the same fields on the oldDelegate.
-  @override
-  bool shouldRepaint(LoadPaint oldDelegate) => false;
-}
+    //hovering dot paint
+    final Paint dotPaint = Paint();
+    dotPaint.color = Colors.grey;
+    dotPaint.style = PaintingStyle.stroke;
+    dotPaint.strokeCap = StrokeCap.round;
+    dotPaint.strokeWidth = 5;
 
-class CurrentPaint extends CustomPainter {
+    //manage hovering dot
+    if(pointerDetails.stylus.isHovering) {
+      canvas.drawCircle(pointerDetails.stylus.hoveringLocation, 0.5, dotPaint);
+    }
 
-  final Path path;
+    switch(pointerDetails.getTool()) {
+      case Tool.pen:
+        canvas.drawPath(path, penPaint);
 
-  CurrentPaint({
-    required this.path,
-  });
-
-  @override
-
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint();
-    paint.color = Colors.black;
-    paint.style = PaintingStyle.stroke;
-    paint.strokeCap = StrokeCap.round;
-    paint.strokeWidth = 5;
-
-    canvas.drawPath(path, paint);
-  }
-
-// Since this Sky painter has no fields, it always paints
-// the same thing and semantics information is the same.
-// Therefore we return false here. If we had fields (set
-// from the constructor) then we would return true if any
-// of them differed from the same fields on the oldDelegate.
-  @override
-  bool shouldRepaint(CurrentPaint oldDelegate) => true;
-}
-
-class StylusPaint extends CustomPainter {
-
-  final Offset hoverLocation;
-  final bool shouldShowDot;
-
-  StylusPaint({
-    required this.hoverLocation,
-    required this.shouldShowDot,
-
-  });
-
-  @override
-
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint();
-    paint.color = Colors.grey;
-    paint.style = PaintingStyle.stroke;
-    paint.strokeCap = StrokeCap.round;
-    paint.strokeWidth = 5;
-
-    if(shouldShowDot) {
-      canvas.drawCircle(hoverLocation, 0.5, paint);
+      case Tool.eraser:
+        for(Path path in pathStack) {
+          Path intersection = Path.combine(PathOperation.union, this.path, path);
+          print(intersection.getBounds());
+          if(intersection.getBounds().isEmpty) {
+            pathStack.remove(path);
+          }
+      }
     }
   }
 
@@ -195,5 +144,5 @@ class StylusPaint extends CustomPainter {
 // from the constructor) then we would return true if any
 // of them differed from the same fields on the oldDelegate.
   @override
-  bool shouldRepaint(StylusPaint oldDelegate) => true;
+  bool shouldRepaint(Painter oldDelegate) => true;
 }
