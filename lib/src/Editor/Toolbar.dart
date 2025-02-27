@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 
 class Toolbar extends StatefulWidget {
   const Toolbar({super.key});
@@ -9,11 +8,11 @@ class Toolbar extends StatefulWidget {
 }
 
 class _ToolbarState extends State<Toolbar> {
-
   @override
   Widget build(BuildContext context) {
-    return(
-    Text("hello")
-    );
+    return (Container(
+      color: Colors.blue,
+      height: 100,
+    ));
   }
 }
