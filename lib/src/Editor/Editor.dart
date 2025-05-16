@@ -8,8 +8,9 @@ import 'Notepage.dart';
 
 class Editor extends StatefulWidget {
   final bool isTooling;
+  final PointerDetails pointerDetails;
 
-  const Editor({super.key, required this.isTooling});
+  const Editor({super.key, required this.isTooling, required this.pointerDetails});
 
   @override
   State<Editor> createState() => _EditorState();
@@ -18,51 +19,53 @@ class Editor extends StatefulWidget {
 class _EditorState extends State<Editor> {
 
 
-  int pointerCount = 0;
+  bool isMoving = false;
 
   @override
   Widget build(BuildContext context) {
     void onInteractionStart(ScaleStartDetails event) {
       setState(() {
-        pointerCount = event.pointerCount;
-      });
-    }
-
-    void onInteractionUpdate(ScaleUpdateDetails event) {
-      print(pointerCount);
-      setState(() {
-        pointerCount = event.pointerCount;
+        if(event.pointerCount > 1) {
+          isMoving = true;
+        } else {
+          isMoving = false;
+        }
       });
     }
 
     void onInteractionEnd(ScaleEndDetails event) {
       setState(() {
-        pointerCount = event.pointerCount;
+        if(event.pointerCount > 1) {
+          isMoving = true;
+        } else {
+          isMoving = false;
+        }
       });
     }
 
     return (SizedBox.expand(
         child: InteractiveViewer(
             onInteractionStart: onInteractionStart,
-            onInteractionUpdate: onInteractionUpdate,
             onInteractionEnd: onInteractionEnd,
             constrained: false,
-            panEnabled: (pointerCount == 2),
+            panEnabled: isMoving,
             panAxis: PanAxis.horizontal,
-            scaleEnabled: (pointerCount == 2),
-            clipBehavior: Clip.none,
+            scaleEnabled: isMoving,
+            maxScale: 100,
+            minScale: 0.5,
+            boundaryMargin: EdgeInsets.only(left: 50, right: 50),
             child: Center(
                   child: Column(
                     children: [
                       SizedBox(
                         height: 800,
                         width: 500,
-                        child: Notepage(isTooling: pointerCount != 2)
+                        child: Notepage(isTooling: !isMoving, pointerDetails: widget.pointerDetails,)
                       ),
                       SizedBox(
                           height: 800,
                           width: 500,
-                          child: Notepage(isTooling: pointerCount != 2)
+                          child: Notepage(isTooling: !isMoving, pointerDetails: widget.pointerDetails,)
                       ),
                     ],
                   ),

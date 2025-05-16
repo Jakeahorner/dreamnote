@@ -5,5 +5,4 @@ class Stylus {
   bool isHovering = false;
   bool isEnabled = false;
   Offset hoveringLocation = Offset(0, 0);
-
 }

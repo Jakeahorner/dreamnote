@@ -17,7 +17,7 @@ class PointerDetails {
   Tool getTool() {
     if(stylus.isEnabled && stylus.isButtonDown) {
       _tool = Tool.eraser;
-    } else {
+    } else if (stylus.isEnabled){
       _tool = Tool.pen;
     }
     return _tool;
@@ -56,6 +56,7 @@ class PointerDetails {
     _pointerDeviceIds.clear();
   }
   removePointer(PointerEvent event) {
+    removeHoveringPointer();
     _pointerDeviceIds.remove(event.device);
   }
 

@@ -5,9 +5,10 @@ import '../Utilities/PointerDetails.dart';
 import '../Utilities/Tool.dart';
 
 class Notepage extends StatefulWidget {
-  const Notepage({super.key, required this.isTooling});
+  const Notepage({super.key, required this.isTooling, required this.pointerDetails});
 
   final bool isTooling;
+  final PointerDetails pointerDetails;
 
   @override
   State<Notepage> createState() => _Notepage();
@@ -17,15 +18,14 @@ class _Notepage extends State<Notepage> {
 
   Path path = Path();
   List<Path> pathStack = [];
-  PointerDetails pointerDetails = PointerDetails();
 
   void onPointerDown(PointerDownEvent event) {
     setState(() {
-      pointerDetails.addPointer(event);
+      widget.pointerDetails.addPointer(event);
 
-      if (widget.isTooling && !pointerDetails.isMuliTouched()) {
+      if (widget.isTooling && !widget.pointerDetails.isMuliTouched()) {
         path.moveTo(
-            pointerDetails.getPosition().dx, pointerDetails.getPosition().dy);
+            widget.pointerDetails.getPosition().dx, widget.pointerDetails.getPosition().dy);
       } else {
         path = Path();
       }
@@ -34,7 +34,7 @@ class _Notepage extends State<Notepage> {
 
   void onPointerMove(PointerMoveEvent event) {
     setState(() {
-      if (widget.isTooling && !pointerDetails.isMuliTouched()) {
+      if (widget.isTooling && !widget.pointerDetails.isMuliTouched()) {
         path.lineTo(event.localPosition.dx, event.localPosition.dy);
       }
     });
@@ -42,18 +42,18 @@ class _Notepage extends State<Notepage> {
 
   void onPointerHover(PointerHoverEvent event) {
     setState(() {
-      pointerDetails.addHoveringPointer(event);
+      widget.pointerDetails.addHoveringPointer(event);
     });
   }
 
   void onPointerUp(PointerUpEvent event) {
     setState(() {
-      if (widget.isTooling && !pointerDetails.isMuliTouched() &&
-          pointerDetails.getTool() == Tool.pen) {
+      if (widget.isTooling && !widget.pointerDetails.isMuliTouched() &&
+          widget.pointerDetails.getTool() == Tool.pen) {
         pathStack.add(path);
       }
       path = Path();
-      pointerDetails.removePointer(event);
+      widget.pointerDetails.removePointer(event);
     });
   }
 
@@ -67,7 +67,7 @@ class _Notepage extends State<Notepage> {
         onPointerMove: onPointerMove,
           child: CustomPaint(
               foregroundPainter: Painter(
-                  pointerDetails: pointerDetails,
+                  pointerDetails: widget.pointerDetails,
                   pathStack: pathStack,
                   path: path),
               child:
