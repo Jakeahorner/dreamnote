@@ -1,3 +1,4 @@
+import 'package:dreamnote/src/Utilities/NoteType.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -20,6 +21,14 @@ class _EditorState extends State<Editor> {
 
 
   bool isMoving = false;
+  NoteType note = NoteType("Tester");
+
+  @override
+  void initState() {
+    super.initState();
+    note.addPage();
+    note.addPage();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +52,7 @@ class _EditorState extends State<Editor> {
       });
     }
 
+
     return (SizedBox.expand(
         child: InteractiveViewer(
             onInteractionStart: onInteractionStart,
@@ -57,16 +67,12 @@ class _EditorState extends State<Editor> {
             child: Center(
                   child: Column(
                     children: [
-                      SizedBox(
-                        height: 800,
-                        width: 500,
-                        child: Notepage(isTooling: !isMoving, pointerDetails: widget.pointerDetails,)
-                      ),
-                      SizedBox(
+                      for(int i = 0; i < 2; i++)
+                        SizedBox(
                           height: 800,
                           width: 500,
-                          child: Notepage(isTooling: !isMoving, pointerDetails: widget.pointerDetails,)
-                      ),
+                          child: Notepage(isTooling: !isMoving, pointerDetails: widget.pointerDetails, pageNum: i, note: note,)
+                        ),
                     ],
                   ),
                 ),

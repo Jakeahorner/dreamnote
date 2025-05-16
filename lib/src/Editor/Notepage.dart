@@ -1,16 +1,28 @@
+
+import 'dart:io';
+
+import 'package:dreamnote/src/Utilities/NoteType.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:r_tree/r_tree.dart';
 import 'dart:math';
 import '../Utilities/PointerDetails.dart';
 import '../Utilities/Tool.dart';
+import '../Utilities/Save.dart';
 
 class Notepage extends StatefulWidget {
-  const Notepage({super.key, required this.isTooling, required this.pointerDetails});
+  const Notepage({
+    super.key,
+    required this.isTooling,
+    required this.pointerDetails,
+    required this.pageNum,
+    required this.note,
+  });
 
   final bool isTooling;
   final PointerDetails pointerDetails;
+  final int pageNum;
+  final NoteType note;
 
   @override
   State<Notepage> createState() => _Notepage();
@@ -18,17 +30,58 @@ class Notepage extends StatefulWidget {
 
 class _Notepage extends State<Notepage> with WidgetsBindingObserver{
 
+  //current path being worked on
   Path path = Path();
+  //this is the current paths the screen is drawing
   List<Path> pathStack = [];
+  //this stores commands for each path to store
+  List<List<String>> pathCommandList = [];
+  //this stores a tree of paths for the eraser
   RTree<Path> pathTree = RTree<Path>();
+
+  //used to save a path
+  void savePath(Path path) {
+    pathStack.add(path);
+    pathTree.add([RTreeDatum(Rectangle.fromPoints(Point(path.getBounds().topLeft.dx, path.getBounds().topLeft.dy), Point(path.getBounds().bottomRight.dx, path.getBounds().bottomRight.dy)), path)]);
+  }
+
+  //loads a path from storage
+  Future<void> loadNoteData() async {
+    //loading
+    await Save.init();
+    if(Save.fileExists('${widget.note.noteName}/paths')) {
+      NoteType savedNote = NoteType.parseData(Save.readFile('${widget.note.noteName}/paths'));
+      pathCommandList.addAll(savedNote.pathCommandsPerPage.elementAt(widget.pageNum));
+      for(List<String> commands in savedNote.pathCommandsPerPage.elementAt(widget.pageNum)) {
+        Path loadedPath = NoteType.commandsToPath(commands);
+        savePath(loadedPath);
+      }
+    }
+  }
+  void saveData() {
+    widget.note.savePage(widget.pageNum, pathCommandList);
+
+    Save.saveFile('${widget.note.noteName}/paths', widget.note.getData());
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadNoteData();
+  }
+
+  // ----- Pointer Functions -----
 
   void onPointerDown(PointerDownEvent event) {
     setState(() {
       widget.pointerDetails.addPointer(event);
 
       if (widget.isTooling && !widget.pointerDetails.isMuliTouched()) {
+        //starting the new path
         path.moveTo(
             widget.pointerDetails.getPosition().dx, widget.pointerDetails.getPosition().dy);
+        //saving the move command
+        pathCommandList.add(["M ${widget.pointerDetails.getPosition().dx} ${widget.pointerDetails.getPosition().dy}"]);
       } else {
         path = Path();
       }
@@ -39,6 +92,8 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
     setState(() {
       if (widget.isTooling && !widget.pointerDetails.isMuliTouched()) {
         path.lineTo(event.localPosition.dx, event.localPosition.dy);
+        //adding move to the command list to save
+        pathCommandList.last.add("L ${event.localPosition.dx} ${event.localPosition.dy}");
       }
     });
   }
@@ -53,9 +108,9 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
     setState(() {
       if (widget.isTooling && !widget.pointerDetails.isMuliTouched() &&
           widget.pointerDetails.getTool() == Tool.pen) {
-        pathStack.add(path);
-        pathTree.add([RTreeDatum(Rectangle.fromPoints(Point(path.getBounds().topLeft.dx, path.getBounds().topLeft.dy), Point(path.getBounds().bottomRight.dx, path.getBounds().bottomRight.dy)), path)]);
+        savePath(path);
       }
+      saveData();
       path = Path();
       widget.pointerDetails.removePointer(event);
     });
@@ -66,24 +121,22 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
   Widget build(BuildContext context) {
     return Listener(
       //detects stylus
-        onPointerDown: onPointerDown,
-        onPointerHover: onPointerHover,
-        onPointerUp: onPointerUp,
-        onPointerMove: onPointerMove,
-          child: CustomPaint(
-              foregroundPainter: Painter(
-                  pointerDetails: widget.pointerDetails,
-                  pathStack: pathStack,
-                  path: path,
-                  pathTree: pathTree),
-              child:
-                SizedBox.expand(
-                  child: ColoredBox(color: Colors.white),
-                ),
-              ),
-        );
+      onPointerDown: onPointerDown,
+      onPointerHover: onPointerHover,
+      onPointerUp: onPointerUp,
+      onPointerMove: onPointerMove,
+      child: CustomPaint(
+        foregroundPainter: Painter(
+          pointerDetails: widget.pointerDetails,
+          pathStack: pathStack,
+          path: path,
+          pathTree: pathTree),
+        child: SizedBox.expand(
+          child: ColoredBox(color: Colors.white),
+        ),
+      ),
+    );
   }
-
 }
 
 class Painter extends CustomPainter {
@@ -101,6 +154,7 @@ class Painter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+
     //Load past paths
     for (Path loadedPath in pathStack) {
       final Paint paint = Paint();
@@ -140,14 +194,13 @@ class Painter extends CustomPainter {
         List<RTreeDatum<Path>> eraserPaths = pathTree.search(Rectangle.fromPoints(Point(path.getBounds().topLeft.dx, path.getBounds().topLeft.dy), Point(path.getBounds().bottomRight.dx, path.getBounds().bottomRight.dy)));
 
         for (RTreeDatum<Path> testerPath in eraserPaths) {
-          print(pathsIntersect(testerPath.value, path));
-
           if(pathsIntersect(testerPath.value, path)) {
             pathStack.remove(testerPath.value);
           }
         }
     }
   }
+  //TODO: Chatgpt made this, fix it up later, mainly used for eraser
   bool pathsIntersect(Path pathA, Path pathB, {double tolerance = 2.0}) {
     if (!pathA.getBounds().inflate(tolerance).overlaps(pathB.getBounds())) return false;
 
