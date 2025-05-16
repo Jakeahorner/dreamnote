@@ -5,6 +5,7 @@ import '../Utilities/PointerDetails.dart';
 import '../Utilities/Tool.dart';
 import 'Notepage.dart';
 
+
 class Editor extends StatefulWidget {
   final bool isTooling;
 
@@ -27,6 +28,13 @@ class _EditorState extends State<Editor> {
       });
     }
 
+    void onInteractionUpdate(ScaleUpdateDetails event) {
+      print(pointerCount);
+      setState(() {
+        pointerCount = event.pointerCount;
+      });
+    }
+
     void onInteractionEnd(ScaleEndDetails event) {
       setState(() {
         pointerCount = event.pointerCount;
@@ -36,32 +44,29 @@ class _EditorState extends State<Editor> {
     return (SizedBox.expand(
         child: InteractiveViewer(
             onInteractionStart: onInteractionStart,
+            onInteractionUpdate: onInteractionUpdate,
             onInteractionEnd: onInteractionEnd,
+            constrained: false,
             panEnabled: (pointerCount == 2),
+            panAxis: PanAxis.horizontal,
             scaleEnabled: (pointerCount == 2),
             clipBehavior: Clip.none,
             child: Center(
-                child: ListView(
-                  children: [
-                    SizedBox(
-                      height: 800,
-                      width: 500,
-                      child: Notepage(isTooling: widget.isTooling),
-                    ),
-                    SizedBox(
-                      height: 800,
-                      width: 500,
-                      child: Notepage(isTooling: widget.isTooling),
-                    ),
-                    SizedBox(
-                      height: 800,
-                      width: 500,
-                      child: Notepage(isTooling: widget.isTooling),
-                    )
-
-                  ],
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        height: 800,
+                        width: 500,
+                        child: Notepage(isTooling: pointerCount != 2)
+                      ),
+                      SizedBox(
+                          height: 800,
+                          width: 500,
+                          child: Notepage(isTooling: pointerCount != 2)
+                      ),
+                    ],
+                  ),
                 ),
-              ),
             )
 
 

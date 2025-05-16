@@ -48,7 +48,7 @@ class _Notepage extends State<Notepage> {
 
   void onPointerUp(PointerUpEvent event) {
     setState(() {
-      if (!pointerDetails.isMuliTouched() &&
+      if (widget.isTooling && !pointerDetails.isMuliTouched() &&
           pointerDetails.getTool() == Tool.pen) {
         pathStack.add(path);
       }
