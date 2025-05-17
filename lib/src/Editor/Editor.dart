@@ -28,19 +28,27 @@ class _EditorState extends State<Editor> {
   void onNoteChange() {
     Save.loadPDF('${widget.note.value.getNoteName()}/pdf.pdf').then((pdf) {
       setState(() {
+        print(pdf?.sourceName);
         this.pdf = pdf;
       });
+    });
+  }
+  void onPointerDetailChange() {
+    setState(() {
+
     });
   }
   @override
   void initState() {
     super.initState();
     widget.note.addListener(onNoteChange);
+    widget.pointerDetails.addListener(onPointerDetailChange);
   }
   @override
   void dispose() {
     super.dispose();
     widget.note.removeListener(onNoteChange);
+    widget.pointerDetails.removeListener(onPointerDetailChange);
   }
 
   @override
@@ -49,8 +57,8 @@ class _EditorState extends State<Editor> {
     return (SizedBox.expand(
       child: InteractiveViewer(
       constrained: false,
-      panEnabled: widget.pointerDetails.getTool() == Tool.move,
-      scaleEnabled: widget.pointerDetails.getTool() == Tool.move,
+      panEnabled: widget.pointerDetails.getTool() == Tool.move || widget.pointerDetails.isMuliTouched(),
+      scaleEnabled: widget.pointerDetails.getTool() == Tool.move || widget.pointerDetails.isMuliTouched(),
       maxScale: 100,
       minScale: .2,
       boundaryMargin: EdgeInsets.only(left: 100, right: 100),

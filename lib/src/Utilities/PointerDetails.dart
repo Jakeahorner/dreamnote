@@ -7,23 +7,12 @@ import 'Tool.dart';
 
 class PointerDetails extends ChangeNotifier {
   Tool _tool = Tool.pen;
-  Tool _defaultTool = Tool.pen;
   Stylus stylus = Stylus();
   final List<int> _pointerDeviceIds = [];
-  bool _multiTouched = false;
   PointerEvent? event;
 
-  PointerDetails();
 
   Tool getTool() {
-    if(stylus.isEnabled && stylus.isButtonDown) {
-      _tool = Tool.eraser;
-    } else if (stylus.isEnabled){
-      _tool = Tool.pen;
-    }
-    if(_multiTouched) {
-      return Tool.move;
-    }
     return _tool;
   }
 
@@ -31,37 +20,18 @@ class PointerDetails extends ChangeNotifier {
     _tool = newTool;
     notifyListeners();
   }
-  setDefaultTool({required Tool newTool}) {
-    _defaultTool = newTool;
-    notifyListeners();
-  }
-  Tool getDefaultTool() {
-    return _defaultTool;
-
-  }
-  void toggleTool({required Tool newTool}) {
-    if(_tool == newTool) {
-      setTool(newTool: _defaultTool);
-    } else {
-      setDefaultTool(newTool: _tool);
-      setTool(newTool: newTool);
-    }
-  }
-
 
   bool isMuliTouched() {
-    return _multiTouched;
+    return _pointerDeviceIds.length > 1;
+  }
+  int pointerCount() {
+    return _pointerDeviceIds.length;
   }
 
-  addPointer(PointerEvent event) {
+  void addPointer(PointerEvent event) {
     removeHoveringPointer();
     this.event = event;
     _pointerDeviceIds.add(event.device);
-    if(_pointerDeviceIds.length > 1) {
-      _multiTouched = true;
-    } else {
-      _multiTouched = false;
-    }
     if(event.kind == PointerDeviceKind.stylus) {
       stylus.isEnabled = true;
       if(event.buttons == 2) {
@@ -72,14 +42,17 @@ class PointerDetails extends ChangeNotifier {
     } else {
       stylus.isEnabled = false;
     }
+    notifyListeners();
   }
 
   clearPointers() {
     _pointerDeviceIds.clear();
+    notifyListeners();
   }
   removePointer(PointerEvent event) {
     removeHoveringPointer();
     _pointerDeviceIds.remove(event.device);
+    notifyListeners();
   }
 
   Offset getPosition() {
@@ -93,11 +66,13 @@ class PointerDetails extends ChangeNotifier {
   addHoveringPointer(PointerEvent newEvent) {
     stylus.isHovering = true;
     stylus.hoveringLocation = Offset(newEvent.localPosition.dx, newEvent.localPosition.dy);
+    notifyListeners();
   }
 
   removeHoveringPointer() {
     stylus.isHovering = false;
     stylus.hoveringLocation = Offset(0,0);
+    notifyListeners();
   }
 
 }

@@ -74,6 +74,7 @@ class _AppState extends State<App> {
       PdfDocument? pdf = await Save.loadPDF('${newNote.getNoteName()}/pdf.pdf');
       if(pdf != null) {
         newNote.setPageNum(pdf.pages.length);
+        Save.saveFile('${newNote.getNoteName()}/paths', newNote.getData());
         return newNote;
       }
     }
@@ -95,7 +96,7 @@ class _AppState extends State<App> {
             actions: [
               IconButton(onPressed: () => details.setTool(newTool: Tool.pen), icon: Text("Pen")),
               IconButton(onPressed: () => details.setTool(newTool: Tool.eraser), icon: Text("Eraser")),
-              IconButton(onPressed: () => details.toggleTool(newTool: Tool.move), icon:Text("Toggle Tools"))
+              IconButton(onPressed: () => details.setTool(newTool: Tool.move), icon:Text("Move"))
             ],
           ),
           drawer: Drawer(

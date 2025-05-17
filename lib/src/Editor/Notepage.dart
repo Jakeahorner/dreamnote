@@ -41,6 +41,8 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
   List<List<String>> pathCommandList = [];
   //this stores a tree of paths for the eraser
   RTree<Path> pathTree = RTree<Path>();
+  //is true if two fingers have touched the screen
+  bool multitouched = false;
 
   //used to save a path
   void savePath(Path path) {
@@ -82,23 +84,24 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
 
   void onPointerDown(PointerDownEvent event) {
     setState(() {
+      path = Path();
       widget.pointerDetails.addPointer(event);
-
-      if (widget.pointerDetails.getTool() != Tool.move){
+      if(widget.pointerDetails.isMuliTouched()) {
+        multitouched = true;
+      }
+      if (widget.pointerDetails.getTool() != Tool.move && !multitouched){
         //starting the new path
         path.moveTo(
             widget.pointerDetails.getPosition().dx, widget.pointerDetails.getPosition().dy);
         //saving the move command
         pathCommandList.add(["M ${widget.pointerDetails.getPosition().dx} ${widget.pointerDetails.getPosition().dy}"]);
-      } else {
-        path = Path();
       }
     });
   }
 
   void onPointerMove(PointerMoveEvent event) {
     setState(() {
-      if (widget.pointerDetails.getTool() != Tool.move) {
+      if (widget.pointerDetails.getTool() != Tool.move && !multitouched){
         path.lineTo(event.localPosition.dx, event.localPosition.dy);
         //adding move to the command list to save
         pathCommandList.last.add("L ${event.localPosition.dx} ${event.localPosition.dy}");
@@ -114,21 +117,24 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
 
   void onPointerUp(PointerUpEvent event) {
     setState(() {
-      if (widget.pointerDetails.getTool() == Tool.pen) {
+      widget.pointerDetails.removePointer(event);
+      if (widget.pointerDetails.getTool() == Tool.pen && !multitouched) {
         savePath(path);
         saveData();
       }
-      path = Path();
-      widget.pointerDetails.removePointer(event);
+      if(widget.pointerDetails.pointerCount() == 0) {
+        multitouched = false;
+      }
     });
   }
-  void _onPointerDetailsChange() {
-    setState(() {
-      print(widget.pointerDetails.getTool());
-    });
-  }
+
   void onNoteChange() {
     loadNoteData();
+  }
+  void onPointerDetailChange() {
+    setState(() {
+
+    });
   }
 
   @override
@@ -136,31 +142,39 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
     super.initState();
     //add listeners
     widget.note.addListener(onNoteChange);
+    widget.pointerDetails.addListener(onPointerDetailChange);
   }
 
   @override
   void dispose() {
     super.dispose();
     widget.note.removeListener(onNoteChange);
+    widget.pointerDetails.removeListener(onPointerDetailChange);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      //detects stylus
-      onPointerDown: onPointerDown,
-      onPointerHover: onPointerHover,
-      onPointerUp: onPointerUp,
-      onPointerMove: onPointerMove,
-      child: CustomPaint(
-        foregroundPainter: Painter(
-          pointerDetails: widget.pointerDetails,
-          pathStack: pathStack,
-          path: path,
-          pathTree: pathTree),
-          child: widget.child,
-      ),
+
+    Widget paint = CustomPaint(
+      foregroundPainter: Painter(
+      pointerDetails: widget.pointerDetails,
+      pathStack: pathStack,
+      path: path,
+      pathTree: pathTree),
+      child: widget.child,
     );
+    if(widget.pointerDetails.getTool() == Tool.move || widget.pointerDetails.isMuliTouched()) {
+      return paint;
+    } else {
+      return Listener(
+        //detects stylus
+        onPointerDown: onPointerDown,
+        onPointerHover: onPointerHover,
+        onPointerUp: onPointerUp,
+        onPointerMove: onPointerMove,
+        child: paint,
+      );
+    }
   }
 }
 
