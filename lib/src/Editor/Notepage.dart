@@ -2,9 +2,11 @@
 import 'dart:io';
 
 import 'package:dreamnote/src/Utilities/NoteType.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:pdfrx/pdfrx.dart';
+import 'package:provider/provider.dart';
 import 'package:r_tree/r_tree.dart';
 import 'dart:math';
 import '../Utilities/PointerDetails.dart';
@@ -22,7 +24,7 @@ class Notepage extends StatefulWidget {
 
   final PointerDetails pointerDetails;
   final int pageNum;
-  final NoteType note;
+  final ValueNotifier<NoteType> note;
   final Widget child;
 
   @override
@@ -42,16 +44,28 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
 
   //used to save a path
   void savePath(Path path) {
-    pathStack.add(path);
-    pathTree.add([RTreeDatum(Rectangle.fromPoints(Point(path.getBounds().topLeft.dx, path.getBounds().topLeft.dy), Point(path.getBounds().bottomRight.dx, path.getBounds().bottomRight.dy)), path)]);
+    setState(() {
+      pathStack.add(path);
+      pathTree.add([RTreeDatum(Rectangle.fromPoints(Point(path.getBounds().topLeft.dx, path.getBounds().topLeft.dy), Point(path.getBounds().bottomRight.dx, path.getBounds().bottomRight.dy)), path)]);
+    });
   }
 
   //loads a path from storage
   void loadNoteData() {
     //loading
-    if(Save.fileExists('${widget.note.getNoteName()}/paths')) {
-      NoteType savedNote = NoteType.parseData(Save.readFile('${widget.note.getNoteName()}/paths'));
-      pathCommandList.addAll(savedNote.pathCommandsPerPage.elementAt(widget.pageNum));
+    if(Save.fileExists('${widget.note.value.getNoteName()}/paths')) {
+      //reset local paths
+      setState(() {
+        pathCommandList = [];
+        path = Path();
+        pathTree = RTree<Path>();
+        pathStack = [];
+      });
+
+      NoteType savedNote = NoteType.parseData(Save.readFile('${widget.note.value.getNoteName()}/paths'));
+      setState(() {
+        pathCommandList.addAll(savedNote.pathCommandsPerPage.elementAt(widget.pageNum));
+      });
       for(List<String> commands in savedNote.pathCommandsPerPage.elementAt(widget.pageNum)) {
         Path loadedPath = NoteType.commandsToPath(commands);
         savePath(loadedPath);
@@ -59,9 +73,8 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
     }
   }
   void saveData() {
-    widget.note.savePage(widget.pageNum, pathCommandList);
-
-    Save.saveFile('${widget.note.getNoteName()}/paths', widget.note.getData());
+    widget.note.value.savePage(widget.pageNum, pathCommandList);
+    Save.saveFile('${widget.note.value.getNoteName()}/paths', widget.note.value.getData());
   }
 
 
@@ -114,17 +127,21 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
       print(widget.pointerDetails.getTool());
     });
   }
+  void onNoteChange() {
+    loadNoteData();
+  }
 
   @override
   void initState() {
     super.initState();
     //add listeners
-    loadNoteData();
+    widget.note.addListener(onNoteChange);
   }
 
   @override
   void dispose() {
     super.dispose();
+    widget.note.removeListener(onNoteChange);
   }
 
   @override

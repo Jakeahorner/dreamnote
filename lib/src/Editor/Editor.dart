@@ -10,7 +10,7 @@ import 'Notepage.dart';
 
 class Editor extends StatefulWidget {
   final PointerDetails pointerDetails;
-  final NoteType note;
+  final ValueNotifier<NoteType> note;
 
   const Editor({
     super.key,
@@ -25,15 +25,22 @@ class Editor extends StatefulWidget {
 class _EditorState extends State<Editor> {
   PdfDocument? pdf;
 
+  void onNoteChange() {
+    Save.loadPDF('${widget.note.value.getNoteName()}/pdf.pdf').then((pdf) {
+      setState(() {
+        this.pdf = pdf;
+      });
+    });
+  }
   @override
   void initState() {
     super.initState();
-    Save.loadPDF('${widget.note.getNoteName()}/pdf.pdf').then((pdf) {
-     setState(() {
-       this.pdf = pdf;
-     });
-    });
-
+    widget.note.addListener(onNoteChange);
+  }
+  @override
+  void dispose() {
+    super.dispose();
+    widget.note.removeListener(onNoteChange);
   }
 
   @override
@@ -50,7 +57,7 @@ class _EditorState extends State<Editor> {
       child: Center(
         child: Column(
           children: [
-            for (int i = 0; i < widget.note.getNumberOfPages(); i++)
+            for (int i = 0; i < widget.note.value.getNumberOfPages(); i++)
               Column(
                 children: [
                   Notepage(

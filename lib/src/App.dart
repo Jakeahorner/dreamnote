@@ -18,23 +18,46 @@ class App extends StatefulWidget {
 }
 class _AppState extends State<App> {
 
-  late NoteType note;
+  late ValueNotifier<NoteType> note;
   PointerDetails details = PointerDetails();
 
   String cutDirectory(String path) {
     return path.split("/").last;
   }
-  Future<void> loadBeforeApp() async {
-    if(Save.inited()) {
-      return;
-    }
-    setState(() async {
-      await Save.init();
-      note = NoteType.parseData(Save.readFile("${cutDirectory(Save.filesInFolder().first.path)}/paths"));
+  @override
+  void initState() {
+    super.initState();
+    Save.init().then((done) {
+      note = ValueNotifier<NoteType>(makeNewNote());
+      note.addListener(onNoteChange);
+      if(Save.filesInFolder().isNotEmpty) {
+        note.value = NoteType.parseData(Save.readFile("${cutDirectory(Save.filesInFolder().last.path)}/paths"));
+      } else {
+        makeNewNote();
+      }
     });
-
   }
-  Future<void> makePdfNote() async {
+
+  @override
+  void dispose() {
+    super.dispose();
+    note.removeListener(onNoteChange);
+  }
+
+  void onNoteChange() {
+    setState(() {
+
+    });
+  }
+
+  NoteType makeNewNote() {
+    NoteType newNote = NoteType();
+    newNote.setNoteName('Untitled Note - ${DateTime.now()}');
+    newNote.addPage();
+    Save.saveFile('${newNote.getNoteName()}/paths', newNote.getData());
+    return newNote;
+  }
+  Future<NoteType?> makePdfNote() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
     if (result != null) {
       //set up newNote
@@ -48,72 +71,69 @@ class _AppState extends State<App> {
       await file.copy('${Save.devicePath}/DreamNote/${newNote.getNoteName()}/pdf.pdf');
 
       //loads pdf
-      PdfDocument? pdf = await Save.loadPDF('${note.getNoteName()}/pdf.pdf');
+      PdfDocument? pdf = await Save.loadPDF('${newNote.getNoteName()}/pdf.pdf');
       if(pdf != null) {
         newNote.setPageNum(pdf.pages.length);
-        setState(() {
-          note = newNote;
-        });
+        return newNote;
       }
     }
+    return null;
 
   }
 
+
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(future: loadBeforeApp(),
-      builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
-        if(snapshot.connectionState == ConnectionState.done) {
-          return ( Scaffold(
-              appBar: AppBar(
-                actions: [
-                  IconButton(onPressed: () => details.setTool(newTool: Tool.pen), icon: Text("Pen")),
-                  IconButton(onPressed: () => details.setTool(newTool: Tool.eraser), icon: Text("Eraser")),
-                  IconButton(onPressed: () => details.toggleTool(newTool: Tool.move), icon:Text("Toggle Tools"))
-                ],
-              ),
-              drawer: Drawer(
-                child: ListView(
-                  children: [
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          NoteType newNote = NoteType();
-                          newNote.addPage();
-                          note = newNote;
-                        });
-                      },
-                      icon: Text("New Note"),
-                    ),
-                    IconButton(
-                      onPressed: makePdfNote,
-                      icon: Text("New PDF"),
-                    ),
-                    for(FileSystemEntity file in Save.filesInFolder())
-                      IconButton(
-                        onPressed: () {},
-                        icon:Text(cutDirectory(file.path)),
-                      )
-                  ],
+    if(!Save.inited()) {
+      return CircularProgressIndicator();
+    }
+      return (
+          Scaffold(
+
+          appBar: AppBar(
+            title: Text(note.value.getNoteName()),
+            actions: [
+              IconButton(onPressed: () => details.setTool(newTool: Tool.pen), icon: Text("Pen")),
+              IconButton(onPressed: () => details.setTool(newTool: Tool.eraser), icon: Text("Eraser")),
+              IconButton(onPressed: () => details.toggleTool(newTool: Tool.move), icon:Text("Toggle Tools"))
+            ],
+          ),
+          drawer: Drawer(
+            child: ListView(
+              children: [
+                IconButton(
+                  onPressed: () {
+                    note.value = makeNewNote();
+                  },
+                  icon: Text("New Note"),
                 ),
+                IconButton(
+                  onPressed: () async {
+                    NoteType? pdfNote = await makePdfNote();
+                    if(pdfNote != null) {
+                      note.value = pdfNote;
+                    }
+                  },
+                  icon: Text("New PDF"),
+                ),
+                for(FileSystemEntity file in Save.filesInFolder())
+                  IconButton(
+                    onPressed: () {
+                      note.value = NoteType.parseData(Save.readFile('${cutDirectory(file.path)}/paths'));
+                    },
+                    icon:Text(cutDirectory(file.path)),
+                  )
+              ],
+            ),
+          ),
+          body: Stack(
+            children: [
+              Container(color: Colors.purple),
+              Editor(
+                pointerDetails: details,
+                note: note,
               ),
-              body: Stack(
-                children: [
-                  Container(color: Colors.purple),
-                  Editor(
-                    pointerDetails: details,
-                    note: note,
-                  ),
-                ],
-              )));
-
-        } else {
-          return CircularProgressIndicator();
-
-        }
-
-      },
-
-    );
+            ],
+          )));
   }
 }
