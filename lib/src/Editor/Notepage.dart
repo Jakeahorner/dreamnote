@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dreamnote/src/Utilities/NoteType.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'package:r_tree/r_tree.dart';
 import 'dart:math';
 import '../Utilities/PointerDetails.dart';
@@ -17,12 +18,14 @@ class Notepage extends StatefulWidget {
     required this.pointerDetails,
     required this.pageNum,
     required this.note,
+    required this.child,
   });
 
   final bool isTooling;
   final PointerDetails pointerDetails;
   final int pageNum;
   final NoteType note;
+  final Widget child;
 
   @override
   State<Notepage> createState() => _Notepage();
@@ -46,9 +49,8 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
   }
 
   //loads a path from storage
-  Future<void> loadNoteData() async {
+  void loadNoteData() {
     //loading
-    await Save.init();
     if(Save.fileExists('${widget.note.noteName}/paths')) {
       NoteType savedNote = NoteType.parseData(Save.readFile('${widget.note.noteName}/paths'));
       pathCommandList.addAll(savedNote.pathCommandsPerPage.elementAt(widget.pageNum));
@@ -131,9 +133,7 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
           pathStack: pathStack,
           path: path,
           pathTree: pathTree),
-        child: SizedBox.expand(
-          child: ColoredBox(color: Colors.white),
-        ),
+          child: widget.child,
       ),
     );
   }
