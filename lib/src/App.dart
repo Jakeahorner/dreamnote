@@ -19,6 +19,7 @@ class App extends StatefulWidget {
 class _AppState extends State<App> {
 
   late NoteType note;
+  PointerDetails details = PointerDetails();
 
   String cutDirectory(String path) {
     return path.split("/").last;
@@ -33,32 +34,42 @@ class _AppState extends State<App> {
     });
 
   }
-  Future<void> savePDF() async {
+  Future<void> makePdfNote() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
     if (result != null) {
+      //set up newNote
+      NoteType newNote = NoteType();
+      newNote.setNoteName(result.files.single.name.replaceAll('.pdf', ''));
+
       File file = File(result.files.single.path!);
-      file.copy('${Save.devicePath}/DreamNote/${note.noteName}/pdf.pdf');
-      for(int i = 0; i < (await Save.loadPDF('${note.noteName}/pdf.pdf'))!.pages.length; i++) {
-        note.addPage();
+      //create the new note directory
+      await Directory('${Save.devicePath}/DreamNote/${newNote.getNoteName()}').create(recursive: true);
+      //copies it in
+      await file.copy('${Save.devicePath}/DreamNote/${newNote.getNoteName()}/pdf.pdf');
+
+      //loads pdf
+      PdfDocument? pdf = await Save.loadPDF('${note.getNoteName()}/pdf.pdf');
+      if(pdf != null) {
+        newNote.setPageNum(pdf.pages.length);
+        setState(() {
+          note = newNote;
+        });
       }
-    } else {
-      // User canceled the picker
     }
 
   }
 
   @override
   Widget build(BuildContext context) {
-    PointerDetails pointerDetails = PointerDetails();
-    return FutureBuilder(future: Future<void>(loadBeforeApp),
+    return FutureBuilder(future: loadBeforeApp(),
       builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
         if(snapshot.connectionState == ConnectionState.done) {
-          return (Scaffold(
+          return ( Scaffold(
               appBar: AppBar(
                 actions: [
-                  IconButton(onPressed: () => pointerDetails.setTool(newTool: Tool.pen), icon: Text("Pen")),
-                  IconButton(onPressed: () => pointerDetails.setTool(newTool: Tool.eraser), icon: Text("Eraser")),
-                  IconButton(onPressed: () => savePDF(), icon: Text("PDF")),
+                  IconButton(onPressed: () => details.setTool(newTool: Tool.pen), icon: Text("Pen")),
+                  IconButton(onPressed: () => details.setTool(newTool: Tool.eraser), icon: Text("Eraser")),
+                  IconButton(onPressed: () => details.toggleTool(newTool: Tool.move), icon:Text("Toggle Tools"))
                 ],
               ),
               drawer: Drawer(
@@ -67,18 +78,21 @@ class _AppState extends State<App> {
                     IconButton(
                       onPressed: () {
                         setState(() {
-                          NoteType newNote = NoteType("Untitled Note");
+                          NoteType newNote = NoteType();
                           newNote.addPage();
                           note = newNote;
                         });
                       },
                       icon: Text("New Note"),
                     ),
+                    IconButton(
+                      onPressed: makePdfNote,
+                      icon: Text("New PDF"),
+                    ),
                     for(FileSystemEntity file in Save.filesInFolder())
                       IconButton(
                         onPressed: () {},
                         icon:Text(cutDirectory(file.path)),
-
                       )
                   ],
                 ),
@@ -87,15 +101,14 @@ class _AppState extends State<App> {
                 children: [
                   Container(color: Colors.purple),
                   Editor(
-                    isTooling: true,
-                    pointerDetails: pointerDetails,
+                    pointerDetails: details,
                     note: note,
                   ),
                 ],
               )));
 
         } else {
-          return Text("Loading");
+          return CircularProgressIndicator();
 
         }
 

@@ -1,4 +1,5 @@
 enum Tool {
   pen(),
-  eraser()
+  eraser(),
+  move()
 }

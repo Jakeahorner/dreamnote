@@ -1,11 +1,13 @@
 import 'dart:ui';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/gestures.dart';
 
 import 'Stylus.dart';
 import 'Tool.dart';
 
-class PointerDetails {
+class PointerDetails extends ChangeNotifier {
   Tool _tool = Tool.pen;
+  Tool _defaultTool = Tool.pen;
   Stylus stylus = Stylus();
   final List<int> _pointerDeviceIds = [];
   bool _multiTouched = false;
@@ -19,12 +21,33 @@ class PointerDetails {
     } else if (stylus.isEnabled){
       _tool = Tool.pen;
     }
+    if(_multiTouched) {
+      return Tool.move;
+    }
     return _tool;
   }
 
   setTool({required Tool newTool}) {
     _tool = newTool;
+    notifyListeners();
   }
+  setDefaultTool({required Tool newTool}) {
+    _defaultTool = newTool;
+    notifyListeners();
+  }
+  Tool getDefaultTool() {
+    return _defaultTool;
+
+  }
+  void toggleTool({required Tool newTool}) {
+    if(_tool == newTool) {
+      setTool(newTool: _defaultTool);
+    } else {
+      setDefaultTool(newTool: _tool);
+      setTool(newTool: newTool);
+    }
+  }
+
 
   bool isMuliTouched() {
     return _multiTouched;

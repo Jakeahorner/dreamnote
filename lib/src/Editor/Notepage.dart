@@ -14,14 +14,12 @@ import '../Utilities/Save.dart';
 class Notepage extends StatefulWidget {
   const Notepage({
     super.key,
-    required this.isTooling,
     required this.pointerDetails,
     required this.pageNum,
     required this.note,
     required this.child,
   });
 
-  final bool isTooling;
   final PointerDetails pointerDetails;
   final int pageNum;
   final NoteType note;
@@ -51,8 +49,8 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
   //loads a path from storage
   void loadNoteData() {
     //loading
-    if(Save.fileExists('${widget.note.noteName}/paths')) {
-      NoteType savedNote = NoteType.parseData(Save.readFile('${widget.note.noteName}/paths'));
+    if(Save.fileExists('${widget.note.getNoteName()}/paths')) {
+      NoteType savedNote = NoteType.parseData(Save.readFile('${widget.note.getNoteName()}/paths'));
       pathCommandList.addAll(savedNote.pathCommandsPerPage.elementAt(widget.pageNum));
       for(List<String> commands in savedNote.pathCommandsPerPage.elementAt(widget.pageNum)) {
         Path loadedPath = NoteType.commandsToPath(commands);
@@ -63,14 +61,9 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
   void saveData() {
     widget.note.savePage(widget.pageNum, pathCommandList);
 
-    Save.saveFile('${widget.note.noteName}/paths', widget.note.getData());
+    Save.saveFile('${widget.note.getNoteName()}/paths', widget.note.getData());
   }
 
-  @override
-  void initState() {
-    super.initState();
-    loadNoteData();
-  }
 
   // ----- Pointer Functions -----
 
@@ -78,7 +71,7 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
     setState(() {
       widget.pointerDetails.addPointer(event);
 
-      if (widget.isTooling && !widget.pointerDetails.isMuliTouched()) {
+      if (widget.pointerDetails.getTool() != Tool.move){
         //starting the new path
         path.moveTo(
             widget.pointerDetails.getPosition().dx, widget.pointerDetails.getPosition().dy);
@@ -92,7 +85,7 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
 
   void onPointerMove(PointerMoveEvent event) {
     setState(() {
-      if (widget.isTooling && !widget.pointerDetails.isMuliTouched()) {
+      if (widget.pointerDetails.getTool() != Tool.move) {
         path.lineTo(event.localPosition.dx, event.localPosition.dy);
         //adding move to the command list to save
         pathCommandList.last.add("L ${event.localPosition.dx} ${event.localPosition.dy}");
@@ -108,16 +101,31 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
 
   void onPointerUp(PointerUpEvent event) {
     setState(() {
-      if (widget.isTooling && !widget.pointerDetails.isMuliTouched() &&
-          widget.pointerDetails.getTool() == Tool.pen) {
+      if (widget.pointerDetails.getTool() == Tool.pen) {
         savePath(path);
+        saveData();
       }
-      saveData();
       path = Path();
       widget.pointerDetails.removePointer(event);
     });
   }
+  void _onPointerDetailsChange() {
+    setState(() {
+      print(widget.pointerDetails.getTool());
+    });
+  }
 
+  @override
+  void initState() {
+    super.initState();
+    //add listeners
+    loadNoteData();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -198,6 +206,8 @@ class Painter extends CustomPainter {
             pathStack.remove(testerPath.value);
           }
         }
+      default:
+
     }
   }
   //TODO: Chatgpt made this, fix it up later, mainly used for eraser
