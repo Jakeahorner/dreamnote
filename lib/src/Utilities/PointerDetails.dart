@@ -13,6 +13,12 @@ class PointerDetails extends ChangeNotifier {
 
 
   Tool getTool() {
+    if(_tool != Tool.eraser && stylus.isButtonDown && stylus.isEnabled) {
+      setTool(newTool: Tool.eraser);
+    }
+    if(_tool != Tool.pen && !stylus.isButtonDown && stylus.isEnabled) {
+      setTool(newTool: Tool.pen);
+    }
     return _tool;
   }
 

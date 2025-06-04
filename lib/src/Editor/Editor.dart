@@ -28,7 +28,6 @@ class _EditorState extends State<Editor> {
   void onNoteChange() {
     Save.loadPDF('${widget.note.value.getNoteName()}/pdf.pdf').then((pdf) {
       setState(() {
-        print(pdf?.sourceName);
         this.pdf = pdf;
       });
     });
@@ -59,9 +58,9 @@ class _EditorState extends State<Editor> {
       constrained: false,
       panEnabled: widget.pointerDetails.getTool() == Tool.move || widget.pointerDetails.isMuliTouched(),
       scaleEnabled: widget.pointerDetails.getTool() == Tool.move || widget.pointerDetails.isMuliTouched(),
-      maxScale: 100,
-      minScale: .2,
-      boundaryMargin: EdgeInsets.only(left: 100, right: 100),
+      maxScale: 2.5,
+      minScale: .8,
+      boundaryMargin: EdgeInsets.only(left: 1000, right: 1000, bottom: 1000, top:1000 ),
       child: Center(
         child: Column(
           children: [
@@ -72,7 +71,7 @@ class _EditorState extends State<Editor> {
                     pointerDetails: widget.pointerDetails,
                     pageNum: i,
                     note: widget.note,
-                    child: PageBackground(pdfPage: pdf == null ? null : PdfPageView(document: pdf, pageNumber: i + 1, maximumDpi: 2000,)),
+                    pdf: pdf
                   ),
                   Container(height: 20,)
                 ],

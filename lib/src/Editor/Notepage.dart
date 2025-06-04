@@ -12,6 +12,7 @@ import 'dart:math';
 import '../Utilities/PointerDetails.dart';
 import '../Utilities/Tool.dart';
 import '../Utilities/Save.dart';
+import 'PageBackground.dart';
 
 class Notepage extends StatefulWidget {
   const Notepage({
@@ -19,13 +20,13 @@ class Notepage extends StatefulWidget {
     required this.pointerDetails,
     required this.pageNum,
     required this.note,
-    required this.child,
+    this.pdf
   });
 
   final PointerDetails pointerDetails;
   final int pageNum;
   final ValueNotifier<NoteType> note;
-  final Widget child;
+  final PdfDocument? pdf;
 
   @override
   State<Notepage> createState() => _Notepage();
@@ -161,7 +162,8 @@ class _Notepage extends State<Notepage> with WidgetsBindingObserver{
       pathStack: pathStack,
       path: path,
       pathTree: pathTree),
-      child: widget.child,
+      child: PageBackground(pdfPage: widget.pdf == null ? null : PdfPageView(document: widget.pdf, pageNumber: widget.pageNum + 1))
+
     );
     if(widget.pointerDetails.getTool() == Tool.move || widget.pointerDetails.isMuliTouched()) {
       return paint;
